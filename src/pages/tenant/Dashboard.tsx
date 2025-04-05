@@ -1,9 +1,8 @@
-
 import React from 'react';
 import TenantLayout from '@/components/layouts/TenantLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CreditCard, AlertTriangle, Building, Tool, Lightbulb, Bell } from 'lucide-react';
+import { CreditCard, AlertTriangle, Building, Wrench, Lightbulb, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { mockPayments, mockMaintenanceRequests, mockAnnouncements, mockUnits } from '@/lib/mockData';
 import PaymentCard from '@/components/cards/PaymentCard';
@@ -58,7 +57,7 @@ const Dashboard = () => {
                   onClick={() => navigate(ROUTES.TENANT.MAINTENANCE)}
                   className="flex items-center gap-2"
                 >
-                  <Tool size={18} />
+                  <Wrench size={18} />
                   Report Issue
                 </Button>
               </div>
@@ -137,7 +136,7 @@ const Dashboard = () => {
                   className="w-full justify-start"
                   onClick={() => navigate(ROUTES.TENANT.MAINTENANCE)}
                 >
-                  <Tool className="mr-2" size={18} />
+                  <Wrench className="mr-2" size={18} />
                   Submit Maintenance Request
                 </Button>
                 <Button 

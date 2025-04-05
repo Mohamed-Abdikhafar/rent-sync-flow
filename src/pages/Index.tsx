@@ -1,16 +1,14 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
-import { Building, Check, CreditCard, Tool } from 'lucide-react';
+import { Building, Check, CreditCard, Wrench } from 'lucide-react';
 
 const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // Redirect logged-in users to their dashboard
   useEffect(() => {
     if (user) {
       if (user.role === 'admin') {
@@ -23,7 +21,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
       <header className="border-b border-gray-100">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Logo size="large" />
@@ -38,7 +35,6 @@ const Index = () => {
         </div>
       </header>
       
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-rentalsync-primary to-blue-700 text-white py-20">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center">
@@ -79,7 +75,6 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Features Section */}
       <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Everything You Need in One Platform</h2>
@@ -126,7 +121,7 @@ const Index = () => {
             
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
               <div className="bg-blue-50 p-3 rounded-full inline-flex mb-4">
-                <Tool className="text-rentalsync-primary" size={24} />
+                <Wrench className="text-rentalsync-primary" size={24} />
               </div>
               <h3 className="text-xl font-semibold mb-3">Maintenance Management</h3>
               <p className="text-gray-600">
@@ -147,7 +142,6 @@ const Index = () => {
         </div>
       </section>
       
-      {/* CTA Section */}
       <section className="py-16 bg-rentalsync-primary text-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to streamline your rental experience?</h2>
@@ -164,7 +158,6 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Footer */}
       <footer className="bg-gray-100 py-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between mb-8">

@@ -1,11 +1,10 @@
-
 import React, { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   CreditCard, 
   Clock, 
-  Tool, 
+  Wrench, 
   FileText,
   LogOut,
   DoorOpen,
@@ -52,7 +51,7 @@ const TenantLayout: React.FC<TenantLayoutProps> = ({ children, title }) => {
     { name: 'Dashboard', icon: Home, path: ROUTES.TENANT.DASHBOARD },
     { name: 'Make Payment', icon: CreditCard, path: ROUTES.TENANT.PAYMENTS },
     { name: 'Payment History', icon: Clock, path: ROUTES.TENANT.PAYMENT_HISTORY },
-    { name: 'Maintenance', icon: Tool, path: ROUTES.TENANT.MAINTENANCE },
+    { name: 'Maintenance', icon: Wrench, path: ROUTES.TENANT.MAINTENANCE },
     { name: 'Documents', icon: FileText, path: ROUTES.TENANT.DOCUMENTS },
     { name: 'Move Out', icon: DoorOpen, path: ROUTES.TENANT.MOVE_OUT },
     { name: 'Messages', icon: MessageSquare, path: ROUTES.TENANT.MESSAGES },

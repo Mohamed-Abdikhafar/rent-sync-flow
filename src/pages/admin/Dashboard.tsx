@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import StatsCard from '@/components/cards/StatsCard';
 import PropertyCard from '@/components/cards/PropertyCard';
 import PaymentCard from '@/components/cards/PaymentCard';
 import MaintenanceRequestCard from '@/components/cards/MaintenanceRequestCard';
-import { Building, CreditCard, Home, Plus, Tool, Users } from 'lucide-react';
+import { Building, CreditCard, Home, Plus, Wrench, Users } from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -144,7 +143,7 @@ const Dashboard = () => {
               
               {activeMaintenanceRequests.length === 0 && (
                 <div className="text-center py-6">
-                  <Tool className="mx-auto mb-3 text-gray-400" size={32} />
+                  <Wrench className="mx-auto mb-3 text-gray-400" size={32} />
                   <p className="text-gray-500">No active maintenance requests.</p>
                 </div>
               )}

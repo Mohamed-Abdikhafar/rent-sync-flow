@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -6,7 +5,7 @@ import {
   Building, 
   Users, 
   CreditCard, 
-  Tool, 
+  Wrench, 
   LogOut,
   FileText,
   MessageSquare,
@@ -56,7 +55,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
     { name: 'Properties', icon: Building, path: ROUTES.ADMIN.PROPERTIES },
     { name: 'Tenants', icon: Users, path: ROUTES.ADMIN.TENANTS },
     { name: 'Payments', icon: CreditCard, path: ROUTES.ADMIN.PAYMENTS },
-    { name: 'Maintenance', icon: Tool, path: ROUTES.ADMIN.MAINTENANCE },
+    { name: 'Maintenance', icon: Wrench, path: ROUTES.ADMIN.MAINTENANCE },
     { name: 'Documents', icon: FileText, path: ROUTES.ADMIN.DOCUMENTS },
     { name: 'Messages', icon: MessageSquare, path: ROUTES.ADMIN.MESSAGES },
     { name: 'Analytics', icon: BarChart3, path: ROUTES.ADMIN.ANALYTICS },

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import TenantLayout from '@/components/layouts/TenantLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockMaintenanceRequests } from '@/lib/mockData';
 import { toast } from 'sonner';
 import MaintenanceRequestCard from '@/components/cards/MaintenanceRequestCard';
-import { Camera, Info, Tool, Upload } from 'lucide-react';
+import { Camera, Info, Wrench, Upload } from 'lucide-react';
 import { MaintenanceRequest, MaintenanceStatus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -31,7 +30,6 @@ const Maintenance = () => {
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   
-  // In a real app, we would fetch maintenance requests for the logged-in tenant from Supabase
   const maintenanceRequests = mockMaintenanceRequests;
   
   const submittedRequests = maintenanceRequests.filter(r => r.status === 'submitted');
@@ -53,13 +51,8 @@ const Maintenance = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would upload the file to Supabase Storage
-      // and save the maintenance request to the database
-      
-      // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Close modal and reset form
       setIsRequestModalOpen(false);
       setDescription('');
       setSelectedFile(null);
@@ -98,7 +91,6 @@ const Maintenance = () => {
   return (
     <TenantLayout title="Maintenance Requests">
       <div className="space-y-6">
-        {/* Header with Create Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold mb-1">Maintenance Requests</h1>
@@ -110,12 +102,11 @@ const Maintenance = () => {
             onClick={() => setIsRequestModalOpen(true)}
             className="flex items-center gap-2"
           >
-            <Tool size={16} />
+            <Wrench size={16} />
             New Request
           </Button>
         </div>
         
-        {/* Maintenance Requests Tabs */}
         <Tabs defaultValue="active">
           <TabsList className="mb-4">
             <TabsTrigger value="active">
@@ -141,7 +132,7 @@ const Maintenance = () => {
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
-                  <Tool className="mx-auto mb-3 text-gray-400" size={36} />
+                  <Wrench className="mx-auto mb-3 text-gray-400" size={36} />
                   <p className="text-gray-500 mb-2">No active maintenance requests</p>
                   <Button variant="outline" onClick={() => setIsRequestModalOpen(true)}>
                     Submit a new request
@@ -193,7 +184,6 @@ const Maintenance = () => {
           </TabsContent>
         </Tabs>
         
-        {/* Instructions Card */}
         <Card>
           <CardHeader>
             <CardTitle>How to Submit a Maintenance Request</CardTitle>
@@ -239,7 +229,6 @@ const Maintenance = () => {
         </Card>
       </div>
       
-      {/* New Request Modal */}
       <Dialog open={isRequestModalOpen} onOpenChange={setIsRequestModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -311,7 +300,6 @@ const Maintenance = () => {
         </DialogContent>
       </Dialog>
       
-      {/* View Request Details Modal */}
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
         <DialogContent>
           <DialogHeader>
