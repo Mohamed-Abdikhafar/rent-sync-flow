@@ -31,13 +31,18 @@ import { mockUsers, mockProperties, mockUnits } from '@/lib/mockData';
 import { User, Property, Unit } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { CheckCircle, Plus, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle, Plus, Search, User as UserIcon, Trash2 } from 'lucide-react';
+import CreateTenantForm, { TenantFormData } from '@/components/forms/CreateTenantForm';
+import { generateInvitationCode, generateTemporaryPassword } from '@/lib/utils/tenantUtils';
+import { format } from 'date-fns';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Tenants = () => {
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState<string>('');
+  const [isCreateTenantOpen, setIsCreateTenantOpen] = useState(false);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // In a real app, we would fetch tenants, properties, and units from Supabase
@@ -50,34 +55,68 @@ const Tenants = () => {
     (selectedProperty === 'all' || unit.propertyId === selectedProperty)
   );
   
-  const handleInviteTenant = async () => {
-    if (!inviteEmail) {
-      toast.error('Please enter an email address');
-      return;
-    }
+  const handleCreateTenant = async (data: TenantFormData) => {
+    setIsSubmitting(true);
     
-    if (!selectedUnit) {
-      toast.error('Please select a unit');
-      return;
+    try {
+      const invitationCode = generateInvitationCode();
+      const temporaryPassword = generateTemporaryPassword();
+      
+      // Get the unit to be assigned
+      const unit = mockUnits.find(u => u.id === data.unitId);
+      
+      if (!unit) {
+        throw new Error('Selected unit not found');
+      }
+      
+      // In a real app, we would create the tenant in Supabase and send an invitation email
+      // For now, we'll simulate the API call with a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Success message including the generated credentials (in a real app, this would be sent via email)
+      toast.success(
+        <div>
+          <p>Tenant created successfully!</p>
+          <p className="text-xs mt-1">Invitation email sent to {data.email}</p>
+        </div>
+      );
+      
+      console.log('Created tenant with:', {
+        ...data,
+        invitationCode,
+        temporaryPassword
+      });
+      
+      // Close the dialog
+      setIsCreateTenantOpen(false);
+    } catch (error) {
+      console.error('Error creating tenant:', error);
+      toast.error('Failed to create tenant');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+  
+  const handleRemoveTenant = async () => {
+    if (!selectedTenantId) return;
     
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would send an invitation email to the tenant
-      // and create an unassigned user in Supabase
+      // In a real app, we would:
+      // 1. Update the tenant's isActive status to false
+      // 2. Update the unit's status to vacant and remove the tenantId
+      // 3. Send a notification to the tenant
       
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      toast.success(`Invitation sent to ${inviteEmail}`);
-      setIsInviteModalOpen(false);
-      
-      // Reset form
-      setInviteEmail('');
-      setSelectedUnit('');
+      toast.success('Tenant removed successfully');
+      setIsRemoveDialogOpen(false);
+      setSelectedTenantId(null);
     } catch (error) {
-      toast.error('Failed to send invitation');
+      console.error('Error removing tenant:', error);
+      toast.error('Failed to remove tenant');
     } finally {
       setIsSubmitting(false);
     }
@@ -95,11 +134,25 @@ const Tenants = () => {
     // In a real app, this would navigate to the tenant details page
     toast.info(`Viewing tenant ${tenantId}`);
   };
+  
+  const openRemoveDialog = (tenantId: string) => {
+    setSelectedTenantId(tenantId);
+    setIsRemoveDialogOpen(true);
+  };
+
+  // Filter tenants based on search query
+  const filteredTenants = tenants.filter(tenant => {
+    const fullName = `${tenant.firstName || ''} ${tenant.lastName || ''}`.toLowerCase();
+    const email = tenant.email.toLowerCase();
+    const query = searchQuery.toLowerCase();
+    
+    return fullName.includes(query) || email.includes(query);
+  });
 
   return (
     <AdminLayout title="Tenants">
       <div className="space-y-6">
-        {/* Header with Search and Invite Button */}
+        {/* Header with Search and Create Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold mb-1">Tenants</h1>
@@ -114,14 +167,16 @@ const Tenants = () => {
               <Input 
                 placeholder="Search tenants..." 
                 className="pl-8 w-full sm:w-[250px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Button 
-              onClick={() => setIsInviteModalOpen(true)}
+              onClick={() => setIsCreateTenantOpen(true)}
               className="flex items-center gap-2"
             >
               <Plus size={16} />
-              Invite Tenant
+              Create Tenant
             </Button>
           </div>
         </div>
@@ -158,11 +213,12 @@ const Tenants = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Unit</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tenants.map(tenant => (
+                {filteredTenants.map(tenant => (
                   <TableRow key={tenant.id}>
                     <TableCell className="font-medium">
                       {tenant.firstName} {tenant.lastName}
@@ -170,29 +226,44 @@ const Tenants = () => {
                     <TableCell>{tenant.email}</TableCell>
                     <TableCell>{tenant.phoneNumber}</TableCell>
                     <TableCell>{getUnitInfo(tenant.id)}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tenant.isActive === false ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                        {tenant.isActive === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleViewTenant(tenant.id)}
-                      >
-                        View
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewTenant(tenant.id)}
+                        >
+                          View
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={() => openRemoveDialog(tenant.id)}
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 
-                {tenants.length === 0 && (
+                {filteredTenants.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={6} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center">
+                        <UserIcon className="h-12 w-12 text-gray-300 mb-2" />
                         <p className="text-gray-500 mb-2">No tenants found</p>
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => setIsInviteModalOpen(true)}
+                          onClick={() => setIsCreateTenantOpen(true)}
                         >
-                          Invite Tenant
+                          Create Tenant
                         </Button>
                       </div>
                     </TableCell>
@@ -204,82 +275,43 @@ const Tenants = () => {
         </Card>
       </div>
       
-      {/* Invite Tenant Modal */}
-      <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
+      {/* Create Tenant Form */}
+      <CreateTenantForm 
+        availableUnits={availableUnits}
+        onSubmit={handleCreateTenant}
+        isOpen={isCreateTenantOpen}
+        onClose={() => setIsCreateTenantOpen(false)}
+      />
+      
+      {/* Remove Tenant Dialog */}
+      <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite New Tenant</DialogTitle>
+            <DialogTitle>Remove Tenant</DialogTitle>
             <DialogDescription>
-              Send an invitation to a new tenant and assign them to a unit
+              Are you sure you want to remove this tenant? This will deactivate their account 
+              and mark their unit as vacant.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="tenant-email">Email Address</Label>
-              <Input
-                id="tenant-email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="tenant@example.com"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="property">Property</Label>
-              <Select 
-                value={selectedProperty} 
-                onValueChange={setSelectedProperty}
-              >
-                <SelectTrigger id="property">
-                  <SelectValue placeholder="Select a property" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Properties</SelectItem>
-                  {properties.map(property => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unit</Label>
-              <Select 
-                value={selectedUnit} 
-                onValueChange={setSelectedUnit}
-                disabled={availableUnits.length === 0}
-              >
-                <SelectTrigger id="unit">
-                  <SelectValue placeholder={availableUnits.length > 0 ? "Select a unit" : "No vacant units available"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUnits.map(unit => (
-                    <SelectItem key={unit.id} value={unit.id}>
-                      Unit {unit.unitNumber} - KES {unit.rentAmount.toLocaleString()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="bg-blue-50 p-4 rounded-md flex">
-              <CheckCircle className="text-blue-500 mt-0.5 mr-2 flex-shrink-0" size={18} />
-              <p className="text-sm text-blue-700">
-                An email invitation will be sent to the tenant with instructions to create their account.
-              </p>
-            </div>
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This action cannot be undone. The tenant will receive an email notification
+              and will no longer be able to log in.
+            </AlertDescription>
+          </Alert>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsInviteModalOpen(false)}>
+            <Button variant="outline" onClick={() => setIsRemoveDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleInviteTenant} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Send Invitation'}
+            <Button 
+              variant="destructive" 
+              onClick={handleRemoveTenant}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Removing...' : 'Remove Tenant'}
             </Button>
           </DialogFooter>
         </DialogContent>
