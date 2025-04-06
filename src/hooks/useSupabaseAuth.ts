@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -185,8 +184,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           firstName,
           lastName,
           phoneNumber,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
           isActive: true,
           hasCompletedSetup: true,
         });

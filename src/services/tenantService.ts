@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { TenantFormData } from '@/components/forms/CreateTenantForm';
 import { generateInvitationCode, generateTemporaryPassword } from '@/lib/utils/tenantUtils';
@@ -64,9 +63,9 @@ export const createTenant = async (data: TenantFormData, adminId: string): Promi
     isActive: true,
     propertyId: unit.propertyId,
     unitId: data.unitId,
+    hasCompletedSetup: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    hasCompletedSetup: false,
   };
 
   const { data: insertedUser, error: insertError } = await supabase
