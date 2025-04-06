@@ -45,3 +45,53 @@ export const generateTemporaryPassword = (length: number = 8): string => {
   // Shuffle the password to mix the guaranteed characters
   return password.split('').sort(() => 0.5 - Math.random()).join('');
 };
+
+/**
+ * Formats a phone number for display
+ * @param phoneNumber The phone number to format (e.g., +254712345678)
+ * @returns Formatted phone number (e.g., +254 712 345 678)
+ */
+export const formatPhoneNumber = (phoneNumber: string): string => {
+  // Remove any non-digit characters except the + sign
+  const cleaned = phoneNumber.replace(/[^\d+]/g, '');
+  
+  // Check if it starts with + (international format)
+  if (cleaned.startsWith('+')) {
+    // Format as international number: +254 712 345 678
+    const countryCode = cleaned.substring(0, 4); // Assuming +XXX format for country code
+    const rest = cleaned.substring(4);
+    
+    // Split the rest into groups of 3
+    const formatted = [];
+    for (let i = 0; i < rest.length; i += 3) {
+      formatted.push(rest.substring(i, i + 3));
+    }
+    
+    return `${countryCode} ${formatted.join(' ')}`;
+  }
+  
+  // If not international, just return as is
+  return cleaned;
+};
+
+/**
+ * Gets a tenant's full name
+ * @param firstName The tenant's first name
+ * @param lastName The tenant's last name
+ * @returns The tenant's full name
+ */
+export const getTenantFullName = (firstName?: string | null, lastName?: string | null): string => {
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  }
+  
+  if (firstName) {
+    return firstName;
+  }
+  
+  if (lastName) {
+    return lastName;
+  }
+  
+  return 'Unknown Tenant';
+};
