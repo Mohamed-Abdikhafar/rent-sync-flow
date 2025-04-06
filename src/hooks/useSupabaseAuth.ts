@@ -31,9 +31,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     navigate = useNavigate();
   } catch (error) {
     // Define a no-op function when not in a Router context
-    navigate = (to: string) => {
+    navigate = ((to: string) => {
       console.warn('Navigation attempted outside Router context:', to);
-    };
+    }) as ReturnType<typeof useNavigate>;
   }
 
   useEffect(() => {
