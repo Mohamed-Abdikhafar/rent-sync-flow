@@ -24,7 +24,17 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [rentalSyncUser, setRentalSyncUser] = useState<RentalSyncUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const navigate = useNavigate();
+  
+  // Use try/catch to handle the case when we're not in a Router context
+  let navigate: ReturnType<typeof useNavigate>;
+  try {
+    navigate = useNavigate();
+  } catch (error) {
+    // Define a no-op function when not in a Router context
+    navigate = (to: string) => {
+      console.warn('Navigation attempted outside Router context:', to);
+    };
+  }
 
   useEffect(() => {
     // Get current session and user on initial load
