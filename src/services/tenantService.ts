@@ -2,7 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import { TenantFormData } from '@/components/forms/CreateTenantForm';
 import { generateInvitationCode, generateTemporaryPassword } from '@/lib/utils/tenantUtils';
-import { User } from '@/lib/types';
+import { User, Unit } from '@/lib/types';
 
 // Create a new tenant
 export const createTenant = async (data: TenantFormData, adminId: string): Promise<User> => {
