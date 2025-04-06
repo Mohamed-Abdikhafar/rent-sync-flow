@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavigateFunction } from 'react-router-dom';
 import { ROUTES } from '@/lib/constants';
 import { User as RentalSyncUser, UserRole } from '@/lib/types';
 
@@ -26,14 +26,14 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const [loading, setLoading] = useState<boolean>(true);
   
   // Use try/catch to handle the case when we're not in a Router context
-  let navigate: ReturnType<typeof useNavigate>;
+  let navigate: NavigateFunction;
   try {
     navigate = useNavigate();
   } catch (error) {
     // Define a no-op function when not in a Router context
     navigate = ((to: string) => {
       console.warn('Navigation attempted outside Router context:', to);
-    }) as ReturnType<typeof useNavigate>;
+    }) as NavigateFunction;
   }
 
   useEffect(() => {
