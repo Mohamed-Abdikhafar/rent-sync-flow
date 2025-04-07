@@ -10,8 +10,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ROUTES, USER_ROLES } from '@/lib/constants';
 import { UserRole } from '@/lib/types';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +18,7 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<UserRole>('admin');
+  const [role, setRole] = useState<UserRole>('tenant');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { register } = useAuth();
@@ -67,15 +65,8 @@ const Register = () => {
   return (
     <AuthLayout
       title="Create an account"
-      subtitle="Sign up as a property manager to get started with RentalSync"
+      subtitle="Sign up to get started with RentalSync"
     >
-      <Alert className="mb-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Only property managers can register directly. Tenants are added by their property manager and receive an invitation email.
-        </AlertDescription>
-      </Alert>
-      
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -151,8 +142,23 @@ const Register = () => {
           />
         </div>
         
-        {/* Hide the role selection since only admins can register directly */}
-        <input type="hidden" value="admin" />
+        <div className="space-y-2">
+          <Label>I am a:</Label>
+          <RadioGroup
+            value={role}
+            onValueChange={(value) => setRole(value as UserRole)}
+            className="flex gap-4"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="tenant" id="tenant" />
+              <Label htmlFor="tenant" className="cursor-pointer">Tenant</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="admin" id="admin" />
+              <Label htmlFor="admin" className="cursor-pointer">Property Manager</Label>
+            </div>
+          </RadioGroup>
+        </div>
         
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Creating account...' : 'Create account'}
