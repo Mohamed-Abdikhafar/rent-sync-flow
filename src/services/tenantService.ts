@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { TenantFormData } from '@/components/forms/CreateTenantForm';
 import { generateInvitationCode, generateTemporaryPassword } from '@/lib/utils/tenantUtils';
@@ -54,18 +55,18 @@ export const createTenant = async (data: TenantFormData, adminId: string): Promi
   const newUser = {
     id: authData.user.id,
     email: data.email,
-    firstName: data.firstName,
-    lastName: data.lastName,
-    phoneNumber: data.phoneNumber,
+    first_name: data.firstName,
+    last_name: data.lastName,
+    phone_number: data.phoneNumber,
     role: 'tenant' as const,
-    invitationCode,
-    temporaryPassword,
-    isActive: true,
-    propertyId: unit.propertyId,
-    unitId: data.unitId,
-    hasCompletedSetup: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    invitation_code: invitationCode,
+    temporary_password: temporaryPassword,
+    is_active: true,
+    property_id: unit.propertyId,
+    unit_id: data.unitId,
+    has_completed_setup: false,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 
   const { data: insertedUser, error: insertError } = await supabase
@@ -85,9 +86,9 @@ export const createTenant = async (data: TenantFormData, adminId: string): Promi
     .from('units')
     .update({
       status: 'occupied',
-      tenantId: authData.user.id,
-      leaseStartDate: data.leaseStartDate.toISOString(),
-      leaseEndDate: data.leaseEndDate.toISOString(),
+      tenant_id: authData.user.id,
+      lease_start_date: data.leaseStartDate.toISOString(),
+      lease_end_date: data.leaseEndDate.toISOString(),
     })
     .eq('id', data.unitId);
 
@@ -99,11 +100,29 @@ export const createTenant = async (data: TenantFormData, adminId: string): Promi
     throw updateUnitError;
   }
 
+  // Convert snake_case from DB to camelCase for our frontend
+  const mappedUser: User = {
+    id: insertedUser.id,
+    email: insertedUser.email,
+    role: insertedUser.role,
+    phoneNumber: insertedUser.phone_number,
+    createdAt: insertedUser.created_at,
+    updatedAt: insertedUser.updated_at,
+    firstName: insertedUser.first_name,
+    lastName: insertedUser.last_name,
+    isActive: insertedUser.is_active,
+    propertyId: insertedUser.property_id,
+    unitId: insertedUser.unit_id,
+    invitationCode: insertedUser.invitation_code,
+    temporaryPassword: insertedUser.temporary_password,
+    hasCompletedSetup: insertedUser.has_completed_setup
+  };
+
   // TODO: Send invitation email to the tenant
   // In a real app, we would call a Supabase Edge Function to send the email
   console.log('Would send email to', data.email, 'with invitation code', invitationCode, 'and temporary password', temporaryPassword);
 
-  return insertedUser as User;
+  return mappedUser;
 };
 
 // Remove a tenant
@@ -111,7 +130,7 @@ export const removeTenant = async (tenantId: string): Promise<void> => {
   // Get tenant's unit information
   const { data: tenant, error: tenantError } = await supabase
     .from('users')
-    .select('unitId')
+    .select('unit_id')
     .eq('id', tenantId)
     .single();
 
@@ -123,8 +142,8 @@ export const removeTenant = async (tenantId: string): Promise<void> => {
   const { error: updateError } = await supabase
     .from('users')
     .update({
-      isActive: false,
-      updatedAt: new Date().toISOString(),
+      is_active: false,
+      updated_at: new Date().toISOString(),
     })
     .eq('id', tenantId);
 
@@ -133,16 +152,16 @@ export const removeTenant = async (tenantId: string): Promise<void> => {
   }
 
   // Update unit status to vacant and remove tenant association
-  if (tenant?.unitId) {
+  if (tenant?.unit_id) {
     const { error: unitError } = await supabase
       .from('units')
       .update({
         status: 'vacant',
-        tenantId: null,
-        leaseStartDate: null,
-        leaseEndDate: null,
+        tenant_id: null,
+        lease_start_date: null,
+        lease_end_date: null,
       })
-      .eq('id', tenant.unitId);
+      .eq('id', tenant.unit_id);
 
     if (unitError) {
       throw unitError;
@@ -161,21 +180,39 @@ export const getTenantsByProperty = async (propertyId: string): Promise<User[]> 
       *,
       units (
         id,
-        unitNumber,
-        rentAmount,
+        unit_number,
+        rent_amount,
         status,
-        leaseStartDate,
-        leaseEndDate
+        lease_start_date,
+        lease_end_date
       )
     `)
     .eq('role', 'tenant')
-    .eq('propertyId', propertyId);
+    .eq('property_id', propertyId);
 
   if (error) {
     throw error;
   }
 
-  return data as User[];
+  // Map the snake_case field names to camelCase for our frontend
+  const mappedUsers = data.map((user: any): User => ({
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    phoneNumber: user.phone_number,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    isActive: user.is_active,
+    propertyId: user.property_id,
+    unitId: user.unit_id,
+    invitationCode: user.invitation_code,
+    temporaryPassword: user.temporary_password,
+    hasCompletedSetup: user.has_completed_setup
+  }));
+
+  return mappedUsers;
 };
 
 // Get available (vacant) units for a specific property
@@ -183,7 +220,7 @@ export const getAvailableUnits = async (propertyId: string) => {
   const { data, error } = await supabase
     .from('units')
     .select('*')
-    .eq('propertyId', propertyId)
+    .eq('property_id', propertyId)
     .eq('status', 'vacant');
 
   if (error) {

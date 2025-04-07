@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,14 +9,22 @@ import AuthLayout from '@/components/layouts/AuthLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ROUTES } from '@/lib/constants';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Key, User } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
+type UserType = 'admin' | 'tenant';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email');
+  const codeParam = searchParams.get('code');
+  
+  const [userType, setUserType] = useState<UserType>('admin');
+  const [email, setEmail] = useState(emailParam || '');
   const [password, setPassword] = useState('');
-  const [invitationCode, setInvitationCode] = useState('');
-  const [showInvitationField, setShowInvitationField] = useState(false);
+  const [invitationCode, setInvitationCode] = useState(codeParam || '');
+  const [showInvitationField, setShowInvitationField] = useState(!!codeParam);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { login } = useAuth();
@@ -30,10 +38,20 @@ const Login = () => {
       return;
     }
     
+    // For tenant first login, we require the invitation code
+    if (userType === 'tenant' && showInvitationField && !invitationCode) {
+      toast.error('Please enter your invitation code');
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      await login(email, password, showInvitationField ? invitationCode : undefined);
+      await login(
+        email, 
+        password, 
+        userType === 'tenant' && showInvitationField ? invitationCode : undefined
+      );
       // Navigation is handled in the login function in the AuthContext
     } catch (error) {
       // Check if the error indicates a tenant requiring an invitation code
@@ -53,6 +71,26 @@ const Login = () => {
       subtitle="Sign in to your account to continue"
     >
       <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="userType">I am a</Label>
+          <Select 
+            defaultValue={userType} 
+            onValueChange={(value) => {
+              setUserType(value as UserType);
+              // Reset invitation field when switching user types
+              setShowInvitationField(userType === 'tenant' && !!codeParam);
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select user type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Property Manager</SelectItem>
+              <SelectItem value="tenant">Tenant</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -87,7 +125,7 @@ const Login = () => {
           />
         </div>
 
-        {showInvitationField && (
+        {(showInvitationField && userType === 'tenant') && (
           <div className="space-y-2">
             <Label htmlFor="invitationCode">Invitation Code</Label>
             <Input
@@ -118,19 +156,21 @@ const Login = () => {
         </Button>
       </form>
       
-      <div className="mt-6 text-center text-sm">
-        Don&apos;t have an account?{' '}
-        <Link to="/register" className="text-rentalsync-primary hover:underline font-medium">
-          Register as a property manager
-        </Link>
-      </div>
-
-      <Alert className="mt-6">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Tenants don't register directly. They receive an invitation from their property manager.
-        </AlertDescription>
-      </Alert>
+      {userType === 'admin' ? (
+        <div className="mt-6 text-center text-sm">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="text-rentalsync-primary hover:underline font-medium">
+            Register as a property manager
+          </Link>
+        </div>
+      ) : (
+        <Alert className="mt-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Tenants don't register directly. You should receive an invitation from your property manager with a code to log in.
+          </AlertDescription>
+        </Alert>
+      )}
     </AuthLayout>
   );
 };

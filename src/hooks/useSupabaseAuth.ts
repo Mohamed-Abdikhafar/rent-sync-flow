@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -58,7 +59,25 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           }
           
           if (userData) {
-            setRentalSyncUser(userData as RentalSyncUser);
+            // Map snake_case fields from DB to camelCase for our frontend
+            const mappedUser: RentalSyncUser = {
+              id: userData.id,
+              email: userData.email,
+              role: userData.role,
+              phoneNumber: userData.phone_number,
+              createdAt: userData.created_at,
+              updatedAt: userData.updated_at,
+              firstName: userData.first_name,
+              lastName: userData.last_name,
+              isActive: userData.is_active,
+              propertyId: userData.property_id,
+              unitId: userData.unit_id,
+              invitationCode: userData.invitation_code,
+              temporaryPassword: userData.temporary_password,
+              hasCompletedSetup: userData.has_completed_setup
+            };
+            
+            setRentalSyncUser(mappedUser);
           }
         }
       } catch (error) {
@@ -83,7 +102,29 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           .eq('id', newSession.user.id)
           .single();
         
-        setRentalSyncUser(userData as RentalSyncUser || null);
+        if (userData) {
+          // Map snake_case fields from DB to camelCase for our frontend
+          const mappedUser: RentalSyncUser = {
+            id: userData.id,
+            email: userData.email,
+            role: userData.role,
+            phoneNumber: userData.phone_number,
+            createdAt: userData.created_at,
+            updatedAt: userData.updated_at,
+            firstName: userData.first_name,
+            lastName: userData.last_name,
+            isActive: userData.is_active,
+            propertyId: userData.property_id,
+            unitId: userData.unit_id,
+            invitationCode: userData.invitation_code,
+            temporaryPassword: userData.temporary_password,
+            hasCompletedSetup: userData.has_completed_setup
+          };
+          
+          setRentalSyncUser(mappedUser);
+        } else {
+          setRentalSyncUser(null);
+        }
       } else {
         setRentalSyncUser(null);
       }
@@ -125,20 +166,38 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       }
       
       // Check if user is active
-      if (userData && userData.isActive === false) {
+      if (userData && userData.is_active === false) {
         // Sign out the user if they're deactivated
         await supabase.auth.signOut();
         throw new Error('Your account has been deactivated. Please contact your property manager.');
       }
       
-      setRentalSyncUser(userData as RentalSyncUser);
+      // Map snake_case fields from DB to camelCase for our frontend
+      const mappedUser: RentalSyncUser = {
+        id: userData.id,
+        email: userData.email,
+        role: userData.role,
+        phoneNumber: userData.phone_number,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        isActive: userData.is_active,
+        propertyId: userData.property_id,
+        unitId: userData.unit_id,
+        invitationCode: userData.invitation_code,
+        temporaryPassword: userData.temporary_password,
+        hasCompletedSetup: userData.has_completed_setup
+      };
+      
+      setRentalSyncUser(mappedUser);
       toast.success('Login successful');
       
       // If this is a first login with invitation code, we'll need to update that
       if (invitationCode && userData) {
         await supabase
           .from('users')
-          .update({ hasCompletedSetup: true })
+          .update({ has_completed_setup: true })
           .eq('id', data.user.id);
       }
       
@@ -181,11 +240,11 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           id: data.user.id,
           email,
           role,
-          firstName,
-          lastName,
-          phoneNumber,
-          isActive: true,
-          hasCompletedSetup: true,
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber,
+          is_active: true,
+          has_completed_setup: true,
         });
       
       if (insertError) {
@@ -205,7 +264,25 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         throw userError;
       }
       
-      setRentalSyncUser(userData as RentalSyncUser);
+      // Map snake_case fields from DB to camelCase for our frontend
+      const mappedUser: RentalSyncUser = {
+        id: userData.id,
+        email: userData.email,
+        role: userData.role,
+        phoneNumber: userData.phone_number,
+        createdAt: userData.created_at,
+        updatedAt: userData.updated_at,
+        firstName: userData.first_name,
+        lastName: userData.last_name,
+        isActive: userData.is_active,
+        propertyId: userData.property_id,
+        unitId: userData.unit_id,
+        invitationCode: userData.invitation_code,
+        temporaryPassword: userData.temporary_password,
+        hasCompletedSetup: userData.has_completed_setup
+      };
+      
+      setRentalSyncUser(mappedUser);
       toast.success('Registration successful');
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
@@ -247,10 +324,10 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         await supabase
           .from('users')
           .update({
-            temporaryPassword: null,
-            invitationCode: null,
-            hasCompletedSetup: true,
-            updatedAt: new Date().toISOString()
+            temporary_password: null,
+            invitation_code: null,
+            has_completed_setup: true,
+            updated_at: new Date().toISOString()
           })
           .eq('id', rentalSyncUser.id);
       }
@@ -269,16 +346,16 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('invitationCode')
+        .select('invitation_code')
         .eq('email', email)
-        .eq('invitationCode', invitationCode)
+        .eq('invitation_code', invitationCode)
         .single();
       
       if (error || !data) {
         return false;
       }
       
-      return data.invitationCode === invitationCode;
+      return data.invitation_code === invitationCode;
     } catch (error) {
       console.error('Error checking invitation code:', error);
       return false;
