@@ -36,8 +36,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }) as NavigateFunction;
   }
 
+  // Get current session and user on initial load
   useEffect(() => {
-    // Get current session and user on initial load
     const getCurrentSession = async () => {
       setLoading(true);
       try {
@@ -55,6 +55,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
             .single();
           
           if (userError) {
+            console.error('Error fetching user data:', userError);
             throw userError;
           }
           
@@ -78,6 +79,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
             };
             
             setRentalSyncUser(mappedUser);
+            
+            // Log user data for debugging
+            console.log('User data loaded:', mappedUser);
           }
         }
       } catch (error) {
@@ -91,16 +95,22 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('Auth state changed:', event, newSession?.user?.id);
+      
       setSession(newSession);
       setUser(newSession?.user || null);
       
       if (newSession?.user) {
         // Fetch additional user data whenever auth state changes
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('id', newSession.user.id)
           .single();
+        
+        if (userError) {
+          console.error('Error fetching user data on auth change:', userError);
+        }
         
         if (userData) {
           // Map snake_case fields from DB to camelCase for our frontend
@@ -122,6 +132,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           };
           
           setRentalSyncUser(mappedUser);
+          console.log('User data updated on auth change:', mappedUser);
         } else {
           setRentalSyncUser(null);
         }
@@ -138,21 +149,29 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
 
   // Login function
   const login = async (email: string, password: string, invitationCode?: string) => {
+    console.log(`Login function called: ${email}, invitation code: ${invitationCode ? 'provided' : 'not provided'}`);
     setLoading(true);
     try {
       // If invitation code is provided, verify it first
       if (invitationCode) {
+        console.log('Verifying invitation code');
         const isValid = await checkInvitationCode(email, invitationCode);
         if (!isValid) {
+          console.log('Invalid invitation code');
           throw new Error('Invalid invitation code');
         }
+        console.log('Invitation code valid');
       }
       
+      console.log('Signing in with Supabase');
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
+        console.error('Supabase auth error:', error);
         throw error;
       }
+      
+      console.log('Supabase auth successful, fetching user data');
       
       // Fetch user data from our custom users table
       const { data: userData, error: userError } = await supabase
@@ -162,11 +181,20 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         .single();
       
       if (userError) {
+        console.error('Error fetching user data after login:', userError);
         throw userError;
       }
       
+      if (!userData) {
+        console.error('No user data found for ID:', data.user.id);
+        throw new Error('User record not found');
+      }
+      
+      console.log('User data retrieved:', userData);
+      
       // Check if user is active
       if (userData && userData.is_active === false) {
+        console.log('User account is deactivated');
         // Sign out the user if they're deactivated
         await supabase.auth.signOut();
         throw new Error('Your account has been deactivated. Please contact your property manager.');
@@ -195,6 +223,7 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       
       // If this is a first login with invitation code, we'll need to update that
       if (invitationCode && userData) {
+        console.log('Updating user record after first login with invitation code');
         await supabase
           .from('users')
           .update({ has_completed_setup: true })
@@ -203,11 +232,14 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       
       // Navigate based on user role
       if (userData && userData.role === 'admin') {
+        console.log('Navigating to admin dashboard');
         navigate(ROUTES.ADMIN.DASHBOARD);
       } else if (userData && userData.role === 'tenant') {
+        console.log('Navigating to tenant dashboard');
         navigate(ROUTES.TENANT.DASHBOARD);
       }
     } catch (error: any) {
+      console.error('Login failed:', error);
       toast.error(error.message || 'Login failed');
       throw error;
     } finally {

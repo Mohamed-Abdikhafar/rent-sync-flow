@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -26,40 +26,68 @@ const Login = () => {
   const [invitationCode, setInvitationCode] = useState(codeParam || '');
   const [showInvitationField, setShowInvitationField] = useState(!!codeParam);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Clear any errors when form fields change
+  useEffect(() => {
+    if (loginError) setLoginError(null);
+  }, [email, password, userType, invitationCode]);
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'admin') {
+        navigate(ROUTES.ADMIN.DASHBOARD);
+      } else if (user.role === 'tenant') {
+        navigate(ROUTES.TENANT.DASHBOARD);
+      }
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    setLoginError(null);
+    
     if (!email || !password) {
-      toast.error('Please enter your email and password');
+      setLoginError('Please enter your email and password');
       return;
     }
     
     // For tenant first login, we require the invitation code
     if (userType === 'tenant' && showInvitationField && !invitationCode) {
-      toast.error('Please enter your invitation code');
+      setLoginError('Please enter your invitation code');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
+      console.log(`Attempting login: ${userType} - ${email}`);
+      
       await login(
         email, 
         password, 
         userType === 'tenant' && showInvitationField ? invitationCode : undefined
       );
-      // Navigation is handled in the login function in the AuthContext
+      
+      console.log('Login function completed successfully');
+      // Navigation is handled in the useEffect above when user state updates
+      
     } catch (error) {
+      console.error('Login error:', error);
+      
       // Check if the error indicates a tenant requiring an invitation code
       if ((error as Error).message?.includes('invitation code')) {
         setShowInvitationField(true);
-        toast.error('This account requires an invitation code for first login');
+        setLoginError('This account requires an invitation code for first login');
+      } else {
+        // Set the error message
+        setLoginError((error as Error).message || 'Login failed. Please check your credentials and try again.');
       }
-      // The error is already handled in the AuthContext with toast
     } finally {
       setIsSubmitting(false);
     }
@@ -79,6 +107,7 @@ const Login = () => {
               setUserType(value as UserType);
               // Reset invitation field when switching user types
               setShowInvitationField(userType === 'tenant' && !!codeParam);
+              setLoginError(null);
             }}
           >
             <SelectTrigger className="w-full">
@@ -150,6 +179,13 @@ const Login = () => {
             Remember me
           </label>
         </div>
+        
+        {loginError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{loginError}</AlertDescription>
+          </Alert>
+        )}
         
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? 'Signing in...' : 'Sign in'}
