@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -36,14 +35,21 @@ const Login = () => {
     if (loginError) setLoginError(null);
   }, [email, password, userType, invitationCode]);
   
-  // Redirect if already logged in
+  // Redirect if already logged in - IMPROVED: Added more robust navigation
   useEffect(() => {
+    console.log("Login effect: Checking if user is logged in", user);
     if (user) {
-      if (user.role === 'admin') {
-        navigate(ROUTES.ADMIN.DASHBOARD);
-      } else if (user.role === 'tenant') {
-        navigate(ROUTES.TENANT.DASHBOARD);
-      }
+      console.log("User is logged in with role:", user.role);
+      // Short timeout to ensure the state is fully updated before navigation
+      setTimeout(() => {
+        if (user.role === 'admin') {
+          console.log("Redirecting to admin dashboard");
+          navigate(ROUTES.ADMIN.DASHBOARD, { replace: true });
+        } else if (user.role === 'tenant') {
+          console.log("Redirecting to tenant dashboard");
+          navigate(ROUTES.TENANT.DASHBOARD, { replace: true });
+        }
+      }, 100);
     }
   }, [user, navigate]);
 
@@ -75,7 +81,12 @@ const Login = () => {
       );
       
       console.log('Login function completed successfully');
-      // Navigation is handled in the useEffect above when user state updates
+      // Force navigation here as a fallback
+      const route = userType === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
+      console.log(`Force navigating to ${route}`);
+      setTimeout(() => {
+        navigate(route, { replace: true });
+      }, 300);
       
     } catch (error) {
       console.error('Login error:', error);
@@ -106,7 +117,7 @@ const Login = () => {
             onValueChange={(value) => {
               setUserType(value as UserType);
               // Reset invitation field when switching user types
-              setShowInvitationField(userType === 'tenant' && !!codeParam);
+              setShowInvitationField(value === 'tenant' && !!codeParam);
               setLoginError(null);
             }}
           >

@@ -230,13 +230,17 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           .eq('id', data.user.id);
       }
       
-      // Navigate based on user role
+      // Navigate based on user role - FIXED: Force navigation with a delay to ensure state is updated
       if (userData && userData.role === 'admin') {
         console.log('Navigating to admin dashboard');
-        navigate(ROUTES.ADMIN.DASHBOARD);
+        setTimeout(() => {
+          navigate(ROUTES.ADMIN.DASHBOARD);
+        }, 100);
       } else if (userData && userData.role === 'tenant') {
         console.log('Navigating to tenant dashboard');
-        navigate(ROUTES.TENANT.DASHBOARD);
+        setTimeout(() => {
+          navigate(ROUTES.TENANT.DASHBOARD);
+        }, 100);
       }
     } catch (error: any) {
       console.error('Login failed:', error);
