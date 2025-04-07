@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -25,18 +24,15 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
   const [rentalSyncUser, setRentalSyncUser] = useState<RentalSyncUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // Use try/catch to handle the case when we're not in a Router context
   let navigate: NavigateFunction;
   try {
     navigate = useNavigate();
   } catch (error) {
-    // Define a no-op function when not in a Router context
     navigate = ((to: string) => {
       console.warn('Navigation attempted outside Router context:', to);
     }) as NavigateFunction;
   }
 
-  // Get current session and user on initial load
   useEffect(() => {
     const getCurrentSession = async () => {
       setLoading(true);
@@ -47,7 +43,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         if (currentSession) {
           setUser(currentSession.user);
           
-          // Fetch additional user data from our users table
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -60,7 +55,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           }
           
           if (userData) {
-            // Map snake_case fields from DB to camelCase for our frontend
             const mappedUser: RentalSyncUser = {
               id: userData.id,
               email: userData.email,
@@ -79,9 +73,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
             };
             
             setRentalSyncUser(mappedUser);
-            
-            // Log user data for debugging
-            console.log('User data loaded:', mappedUser);
+            console.log('User data loaded successfully:', mappedUser);
+            console.log('User role:', mappedUser.role);
           }
         }
       } catch (error) {
@@ -93,7 +86,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     
     getCurrentSession();
     
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       console.log('Auth state changed:', event, newSession?.user?.id);
       
@@ -101,7 +93,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       setUser(newSession?.user || null);
       
       if (newSession?.user) {
-        // Fetch additional user data whenever auth state changes
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
@@ -113,7 +104,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         }
         
         if (userData) {
-          // Map snake_case fields from DB to camelCase for our frontend
           const mappedUser: RentalSyncUser = {
             id: userData.id,
             email: userData.email,
@@ -133,6 +123,20 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           
           setRentalSyncUser(mappedUser);
           console.log('User data updated on auth change:', mappedUser);
+          console.log('Setting rental sync user with role:', mappedUser.role);
+          
+          try {
+            if (window.location.pathname === '/login') {
+              console.log('User is on login page, attempting immediate navigation');
+              const route = mappedUser.role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
+              console.log(`Immediately navigating to ${route} after auth change`);
+              setTimeout(() => {
+                navigate(route, { replace: true });
+              }, 100);
+            }
+          } catch (e) {
+            console.error('Navigation error in auth change handler:', e);
+          }
         } else {
           setRentalSyncUser(null);
         }
@@ -141,18 +145,15 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       }
     });
     
-    // Cleanup subscription
     return () => {
       subscription.unsubscribe();
     };
   }, []);
 
-  // Login function
   const login = async (email: string, password: string, invitationCode?: string) => {
     console.log(`Login function called: ${email}, invitation code: ${invitationCode ? 'provided' : 'not provided'}`);
     setLoading(true);
     try {
-      // If invitation code is provided, verify it first
       if (invitationCode) {
         console.log('Verifying invitation code');
         const isValid = await checkInvitationCode(email, invitationCode);
@@ -171,9 +172,8 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         throw error;
       }
       
-      console.log('Supabase auth successful, fetching user data');
+      console.log('Supabase auth successful, user ID:', data.user.id);
       
-      // Fetch user data from our custom users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -191,16 +191,14 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       }
       
       console.log('User data retrieved:', userData);
+      console.log('User role from database:', userData.role);
       
-      // Check if user is active
       if (userData && userData.is_active === false) {
         console.log('User account is deactivated');
-        // Sign out the user if they're deactivated
         await supabase.auth.signOut();
         throw new Error('Your account has been deactivated. Please contact your property manager.');
       }
       
-      // Map snake_case fields from DB to camelCase for our frontend
       const mappedUser: RentalSyncUser = {
         id: userData.id,
         email: userData.email,
@@ -221,7 +219,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
       setRentalSyncUser(mappedUser);
       toast.success('Login successful');
       
-      // If this is a first login with invitation code, we'll need to update that
       if (invitationCode && userData) {
         console.log('Updating user record after first login with invitation code');
         await supabase
@@ -230,18 +227,20 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
           .eq('id', data.user.id);
       }
       
-      // Navigate based on user role - FIXED: Force navigation with a delay to ensure state is updated
-      if (userData && userData.role === 'admin') {
-        console.log('Navigating to admin dashboard');
-        setTimeout(() => {
-          navigate(ROUTES.ADMIN.DASHBOARD);
-        }, 100);
-      } else if (userData && userData.role === 'tenant') {
-        console.log('Navigating to tenant dashboard');
-        setTimeout(() => {
-          navigate(ROUTES.TENANT.DASHBOARD);
-        }, 100);
-      }
+      const route = userData.role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
+      console.log(`IMPORTANT: Direct navigation to ${route}`);
+      
+      window.setTimeout(() => {
+        console.log('Executing forced navigation');
+        navigate(route, { replace: true });
+        
+        window.setTimeout(() => {
+          if (window.location.pathname === '/login') {
+            console.log('FALLBACK: Using window.location for redirect');
+            window.location.href = route;
+          }
+        }, 500);
+      }, 100);
     } catch (error: any) {
       console.error('Login failed:', error);
       toast.error(error.message || 'Login failed');
@@ -251,11 +250,9 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
   };
 
-  // Register function - primarily used for admin registration
   const register = async (email: string, password: string, role: UserRole, firstName: string, lastName: string, phoneNumber: string) => {
     setLoading(true);
     try {
-      // First register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -269,7 +266,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         throw new Error('User creation failed');
       }
       
-      // Now create a record in our custom users table
       const { error: insertError } = await supabase
         .from('users')
         .insert({
@@ -284,12 +280,10 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         });
       
       if (insertError) {
-        // If there was an error inserting to our custom table, we should clean up the auth user
         console.error('Error creating user in custom table, cleaning up auth user:', insertError);
         throw insertError;
       }
       
-      // Fetch the newly created user
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -300,7 +294,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         throw userError;
       }
       
-      // Map snake_case fields from DB to camelCase for our frontend
       const mappedUser: RentalSyncUser = {
         id: userData.id,
         email: userData.email,
@@ -328,7 +321,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
   };
 
-  // Logout function
   const logout = async () => {
     setLoading(true);
     try {
@@ -343,7 +335,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
   };
 
-  // Update password function
   const updatePassword = async (newPassword: string) => {
     setLoading(true);
     try {
@@ -355,7 +346,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
         throw error;
       }
       
-      // If the user has a temporary password, clear it
       if (rentalSyncUser) {
         await supabase
           .from('users')
@@ -377,7 +367,6 @@ export function useSupabaseAuth(): UseSupabaseAuthReturn {
     }
   };
 
-  // Check invitation code function
   const checkInvitationCode = async (email: string, invitationCode: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase

@@ -35,21 +35,39 @@ const Login = () => {
     if (loginError) setLoginError(null);
   }, [email, password, userType, invitationCode]);
   
-  // Redirect if already logged in - IMPROVED: Added more robust navigation
+  // Enhanced redirect logic if already logged in
   useEffect(() => {
     console.log("Login effect: Checking if user is logged in", user);
     if (user) {
-      console.log("User is logged in with role:", user.role);
-      // Short timeout to ensure the state is fully updated before navigation
-      setTimeout(() => {
-        if (user.role === 'admin') {
-          console.log("Redirecting to admin dashboard");
-          navigate(ROUTES.ADMIN.DASHBOARD, { replace: true });
-        } else if (user.role === 'tenant') {
-          console.log("Redirecting to tenant dashboard");
-          navigate(ROUTES.TENANT.DASHBOARD, { replace: true });
-        }
-      }, 100);
+      console.log("User is logged in with role:", user.role, "Current path:", window.location.pathname);
+      
+      // Force redirection with multiple fallbacks
+      const redirectUser = () => {
+        const route = user.role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
+        console.log(`Redirecting to ${route} with replace=true`);
+        
+        // First attempt - standard navigate
+        navigate(route, { replace: true });
+        
+        // Second attempt - delayed navigate
+        setTimeout(() => {
+          if (window.location.pathname === '/login') {
+            console.log("First redirect didn't work, trying again");
+            navigate(route, { replace: true });
+            
+            // Last resort - window.location
+            setTimeout(() => {
+              if (window.location.pathname === '/login') {
+                console.log("Navigate failed twice, using window.location");
+                window.location.href = route;
+              }
+            }, 300);
+          }
+        }, 200);
+      };
+      
+      // Delay to ensure state is fully processed
+      setTimeout(redirectUser, 100);
     }
   }, [user, navigate]);
 
@@ -81,11 +99,28 @@ const Login = () => {
       );
       
       console.log('Login function completed successfully');
-      // Force navigation here as a fallback
+      
+      // Explicit navigation with multiple fallbacks
       const route = userType === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
-      console.log(`Force navigating to ${route}`);
+      console.log(`Force navigating to ${route} from Login component`);
+      
+      // First attempt
+      navigate(route, { replace: true });
+      
+      // Second attempt with delay
       setTimeout(() => {
-        navigate(route, { replace: true });
+        if (window.location.pathname === '/login') {
+          console.log("First navigation didn't work, trying again from Login component");
+          navigate(route, { replace: true });
+          
+          // Last resort - direct browser navigation
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              console.log("All navigation attempts failed, using direct location change");
+              window.location.href = route;
+            }
+          }, 400);
+        }
       }, 300);
       
     } catch (error) {
