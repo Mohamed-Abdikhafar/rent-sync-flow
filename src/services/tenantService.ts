@@ -62,7 +62,7 @@ export const createTenant = async (data: TenantFormData, adminId: string): Promi
     invitation_code: invitationCode,
     temporary_password: temporaryPassword,
     is_active: true,
-    property_id: unit.propertyId,
+    property_id: data.propertyId,
     unit_id: data.unitId,
     has_completed_setup: false,
     created_at: new Date().toISOString(),
@@ -216,7 +216,7 @@ export const getTenantsByProperty = async (propertyId: string): Promise<User[]> 
 };
 
 // Get available (vacant) units for a specific property
-export const getAvailableUnits = async (propertyId: string) => {
+export const getAvailableUnits = async (propertyId: string): Promise<Unit[]> => {
   const { data, error } = await supabase
     .from('units')
     .select('*')
@@ -227,5 +227,18 @@ export const getAvailableUnits = async (propertyId: string) => {
     throw error;
   }
 
-  return data;
+  // Map snake_case to camelCase
+  const mappedUnits = data.map((unit): Unit => ({
+    id: unit.id,
+    propertyId: unit.property_id,
+    unitNumber: unit.unit_number,
+    rentAmount: unit.rent_amount,
+    status: unit.status,
+    tenantId: unit.tenant_id,
+    leaseStartDate: unit.lease_start_date,
+    leaseEndDate: unit.lease_end_date,
+    createdAt: unit.created_at
+  }));
+
+  return mappedUnits;
 };

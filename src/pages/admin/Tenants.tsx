@@ -35,7 +35,10 @@ import CreateTenantForm, { TenantFormData } from '@/components/forms/CreateTenan
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { createTenant, removeTenant, getTenantsByProperty, getAvailableUnits } from '@/services/tenantService';
+import { getPropertiesByAdmin } from '@/services/propertyService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '@/lib/constants';
 
 const Tenants = () => {
   const { user } = useAuth();
@@ -46,17 +49,24 @@ const Tenants = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   
-  // Properties query - in a real app with multiple properties per admin
-  // We'd fetch these from Supabase
-  const properties = user?.propertyId ? [{ id: user.propertyId, name: 'Your Property' }] : [];
+  // Properties query
+  const propertiesQuery = useQuery({
+    queryKey: ['adminProperties'],
+    queryFn: async () => {
+      if (!user?.id) throw new Error('Admin ID not available');
+      return getPropertiesByAdmin(user.id);
+    },
+    enabled: !!user?.id
+  });
   
+  // Set default property if there's only one
   useEffect(() => {
-    // Set default property if there's only one
-    if (properties.length === 1 && !selectedProperty) {
-      setSelectedProperty(properties[0].id);
+    if (propertiesQuery.data && propertiesQuery.data.length === 1 && !selectedProperty) {
+      setSelectedProperty(propertiesQuery.data[0].id);
     }
-  }, [properties, selectedProperty]);
+  }, [propertiesQuery.data, selectedProperty]);
   
   // Fetch units query
   const unitsQuery = useQuery({
@@ -144,16 +154,86 @@ const Tenants = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {/* Property Selector */}
+            {propertiesQuery.data && propertiesQuery.data.length > 1 && (
+              <Select 
+                value={selectedProperty} 
+                onValueChange={setSelectedProperty}
+              >
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {propertiesQuery.data.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
             <Button 
-              onClick={() => setIsCreateTenantOpen(true)}
+              onClick={() => {
+                if (!selectedProperty) {
+                  if (propertiesQuery.data && propertiesQuery.data.length === 0) {
+                    toast.error('You need to create a property first');
+                    navigate(ROUTES.ADMIN.PROPERTIES);
+                  } else {
+                    toast.error('Please select a property');
+                  }
+                  return;
+                }
+                
+                if (unitsQuery.data && unitsQuery.data.length === 0) {
+                  toast.error('No vacant units available. Please add units to your property first.');
+                  navigate(ROUTES.ADMIN.PROPERTIES);
+                  return;
+                }
+                
+                setIsCreateTenantOpen(true);
+              }}
               className="flex items-center gap-2"
-              disabled={unitsQuery.data?.length === 0}
             >
               <Plus size={16} />
               Create Tenant
             </Button>
           </div>
         </div>
+
+        {/* Property Requirements Messages */}
+        {propertiesQuery.data && propertiesQuery.data.length === 0 && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You need to create a property before you can add tenants.{' '}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-primary" 
+                onClick={() => navigate(ROUTES.ADMIN.PROPERTIES)}
+              >
+                Create a property now
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {selectedProperty && unitsQuery.data && unitsQuery.data.length === 0 && !unitsQuery.isLoading && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This property has no vacant units. Add units to your property before creating tenants.{' '}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-primary" 
+                onClick={() => navigate(ROUTES.ADMIN.PROPERTIES)}
+              >
+                Manage properties
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         
         {/* Tenants Table */}
         <Card>
@@ -228,14 +308,15 @@ const Tenants = () => {
                         <div className="flex flex-col items-center justify-center">
                           <UserIcon className="h-12 w-12 text-gray-300 mb-2" />
                           <p className="text-gray-500 mb-2">No tenants found</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setIsCreateTenantOpen(true)}
-                            disabled={unitsQuery.data?.length === 0}
-                          >
-                            Create Tenant
-                          </Button>
+                          {selectedProperty && unitsQuery.data && unitsQuery.data.length > 0 && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setIsCreateTenantOpen(true)}
+                            >
+                              Create Tenant
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -248,12 +329,15 @@ const Tenants = () => {
       </div>
       
       {/* Create Tenant Form */}
-      <CreateTenantForm 
-        availableUnits={unitsQuery.data || []}
-        onSubmit={handleCreateTenant}
-        isOpen={isCreateTenantOpen}
-        onClose={() => setIsCreateTenantOpen(false)}
-      />
+      {selectedProperty && (
+        <CreateTenantForm 
+          availableUnits={unitsQuery.data || []}
+          onSubmit={handleCreateTenant}
+          isOpen={isCreateTenantOpen}
+          onClose={() => setIsCreateTenantOpen(false)}
+          propertyId={selectedProperty}
+        />
+      )}
       
       {/* Remove Tenant Dialog */}
       <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>

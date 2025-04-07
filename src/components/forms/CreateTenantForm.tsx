@@ -40,6 +40,7 @@ interface CreateTenantFormProps {
   onSubmit: (data: TenantFormData) => Promise<void>;
   isOpen: boolean;
   onClose: () => void;
+  propertyId: string;
 }
 
 export interface TenantFormData {
@@ -50,13 +51,15 @@ export interface TenantFormData {
   unitId: string;
   leaseStartDate: Date;
   leaseEndDate: Date;
+  propertyId: string;
 }
 
 const CreateTenantForm: React.FC<CreateTenantFormProps> = ({ 
   availableUnits, 
   onSubmit, 
   isOpen, 
-  onClose 
+  onClose,
+  propertyId
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,15 +70,21 @@ const CreateTenantForm: React.FC<CreateTenantFormProps> = ({
       email: '',
       phoneNumber: '',
       unitId: '',
+      propertyId: propertyId,
       leaseStartDate: new Date(),
       leaseEndDate: new Date(new Date().setMonth(new Date().getMonth() + 12)), // 12 months from now
     }
   });
 
+  // Update propertyId when it changes
+  React.useEffect(() => {
+    form.setValue('propertyId', propertyId);
+  }, [propertyId, form]);
+
   const handleSubmit = async (data: TenantFormData) => {
     setIsSubmitting(true);
     try {
-      await onSubmit(data);
+      await onSubmit({...data, propertyId});
       form.reset();
       onClose();
       toast.success('Tenant created successfully');
