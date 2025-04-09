@@ -11,12 +11,6 @@ export interface User {
   updatedAt: string;
   firstName?: string;
   lastName?: string;
-  isActive?: boolean;
-  propertyId?: string;
-  unitId?: string;
-  invitationCode?: string;
-  temporaryPassword?: string;
-  hasCompletedSetup?: boolean;
 }
 
 // Property types and interfaces
