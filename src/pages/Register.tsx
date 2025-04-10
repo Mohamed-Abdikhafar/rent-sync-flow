@@ -78,13 +78,16 @@ const Register = () => {
       console.log('User created successfully:', data.user.id);
       
       // Wait for auth session to be established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Try to create profile directly
+      const profileId = uuidv4();
+      console.log('Creating profile with ID:', profileId);
+      
+      // Try to insert the profile with RLS-compatible approach
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          id: uuidv4(),
+          id: profileId,
           user_id: data.user.id,
           email: email,
           first_name: firstName,
@@ -102,6 +105,7 @@ const Register = () => {
         return;
       }
       
+      console.log('Profile created successfully!');
       toast.success("Account created successfully! You'll be redirected to the dashboard.");
       
       // Force reload to fetch the new profile

@@ -100,13 +100,14 @@ export const tenantService = {
     }
     
     // Wait a moment to ensure the auth session is established
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Create user profile
+    const profileId = uuidv4();
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
-        id: uuidv4(),
+        id: profileId,
         user_id: authData.user.id,
         email: email,
         first_name: firstName,

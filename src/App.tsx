@@ -34,10 +34,10 @@ const ProtectedRoute = ({ children, requiredRole }: { children: JSX.Element, req
   return children;
 };
 
-const App = () => {
-  // Create a new QueryClient instance within the component
-  const [queryClient] = useState(() => new QueryClient());
+// Create QueryClient outside of component to avoid recreation on render
+const queryClient = new QueryClient();
 
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
