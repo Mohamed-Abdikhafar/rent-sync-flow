@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { ROUTES, USER_ROLES } from '@/lib/constants';
 import { UserRole } from '@/lib/types';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/lib/supabase';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +22,7 @@ const Register = () => {
   const [role] = useState<UserRole>('admin'); // Default to admin since only admins can register directly
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { register, user, profile } = useSupabaseAuth();
+  const { user, profile } = useSupabaseAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -56,12 +58,57 @@ const Register = () => {
     setIsSubmitting(true);
     
     try {
-      await register(email, password, role, firstName, lastName, phoneNumber);
+      console.log('Registering new admin account');
+      
+      // Create a new user account
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
+
+      if (!data.user) {
+        throw new Error('Failed to create user account');
+      }
+      
+      console.log('User created successfully:', data.user.id);
+      
+      // Wait for auth session to be established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to create profile directly
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: uuidv4(),
+          user_id: data.user.id,
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber,
+          role: role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        toast.error(`Profile creation failed: ${profileError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+      
       toast.success("Account created successfully! You'll be redirected to the dashboard.");
       
-      // The redirect will happen in the auth context when profile is loaded
+      // Force reload to fetch the new profile
+      window.location.href = role === 'admin' ? ROUTES.ADMIN.DASHBOARD : ROUTES.TENANT.DASHBOARD;
     } catch (error: any) {
       console.error("Registration error:", error);
+      toast.error(error.message || 'Registration failed');
       setIsSubmitting(false);
     }
   };

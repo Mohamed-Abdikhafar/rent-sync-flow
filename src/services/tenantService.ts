@@ -100,13 +100,15 @@ export const tenantService = {
     }
     
     // Wait a moment to ensure the auth session is established
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Create user profile
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
+        id: uuidv4(),
         user_id: authData.user.id,
+        email: email,
         first_name: firstName,
         last_name: lastName,
         phone_number: phoneNumber,
@@ -116,6 +118,7 @@ export const tenantService = {
       });
     
     if (profileError) {
+      console.error("Profile creation error:", profileError);
       throw profileError;
     }
     

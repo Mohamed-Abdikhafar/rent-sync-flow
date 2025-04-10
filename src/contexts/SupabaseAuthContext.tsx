@@ -6,6 +6,7 @@ import { UserRole } from '@/lib/types';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/lib/constants';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AuthState {
   user: SupabaseUser | null;
@@ -216,15 +217,16 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
       
       console.log('User created successfully:', data.user.id);
       
-      // Wait a moment to ensure the auth session is established
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait longer to ensure the auth session is established
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Create user profile with proper permissions
-      // The user is now authenticated so the RLS policy will allow this
+      // Create user profile with proper permissions and a unique ID
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
+          id: uuidv4(),
           user_id: data.user.id,
+          email: email,
           first_name: firstName,
           last_name: lastName,
           phone_number: phoneNumber,
@@ -240,7 +242,13 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
       
       toast.success('Registration successful!');
       
-      // Profile will be fetched by the auth state change listener
+      // Redirect the user after successful registration
+      if (role === 'admin') {
+        navigate(ROUTES.ADMIN.DASHBOARD);
+      } else {
+        navigate(ROUTES.TENANT.DASHBOARD);
+      }
+      
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
       throw error;
