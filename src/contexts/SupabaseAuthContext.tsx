@@ -197,8 +197,9 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
         return;
       }
       
-      // For admins, create a new user account
       console.log('Registering new admin account');
+      
+      // For admins, create a new user account first
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -209,10 +210,20 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
         throw error;
       }
 
-      if (data.user) {
-        console.log('User registered, creating profile...');
-        // Create user profile
-        const { error: profileError } = await supabase.from('profiles').insert({
+      if (!data.user) {
+        throw new Error('Failed to create user account');
+      }
+      
+      console.log('User created successfully:', data.user.id);
+      
+      // Wait a moment to ensure the auth session is established
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Create user profile with proper permissions
+      // The user is now authenticated so the RLS policy will allow this
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
           user_id: data.user.id,
           first_name: firstName,
           last_name: lastName,
@@ -222,15 +233,14 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
           updated_at: new Date().toISOString(),
         });
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw profileError;
-        }
-        
-        toast.success('Registration successful!');
-        
-        // Profile will be fetched by the auth state change listener
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
       }
+      
+      toast.success('Registration successful!');
+      
+      // Profile will be fetched by the auth state change listener
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
       throw error;

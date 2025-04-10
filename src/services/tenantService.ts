@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { User, UserRole } from '@/lib/types';
 
-// Add nodemailer for email functionality
 export const tenantService = {
   async getAllTenants() {
     const { data, error } = await supabase
@@ -99,6 +98,9 @@ export const tenantService = {
     if (authError || !authData.user) {
       throw authError || new Error('Failed to create user account');
     }
+    
+    // Wait a moment to ensure the auth session is established
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Create user profile
     const { error: profileError } = await supabase

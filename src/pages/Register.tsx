@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { toast } from 'sonner';
 import { ROUTES, USER_ROLES } from '@/lib/constants';
@@ -18,7 +17,7 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<UserRole>('admin');
+  const [role] = useState<UserRole>('admin'); // Default to admin since only admins can register directly
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { register, user, profile } = useSupabaseAuth();
@@ -58,10 +57,11 @@ const Register = () => {
     
     try {
       await register(email, password, role, firstName, lastName, phoneNumber);
+      toast.success("Account created successfully! You'll be redirected to the dashboard.");
       
       // The redirect will happen in the auth context when profile is loaded
-    } catch (error) {
-      // Error is already handled in the AuthContext
+    } catch (error: any) {
+      console.error("Registration error:", error);
       setIsSubmitting(false);
     }
   };

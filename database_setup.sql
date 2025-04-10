@@ -268,16 +268,30 @@ CREATE POLICY "Anyone can read invitations by email"
   USING (true);
 
 -- Profiles table policies
-CREATE POLICY "Users can manage their own profiles"
-  ON public.profiles
-  USING (user_id = auth.uid());
-  
-CREATE POLICY "Admins can view all profiles"
+DROP POLICY IF EXISTS "Users can manage their own profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+
+-- Add INSERT policy for profiles that allows new users to create their profile
+CREATE POLICY "Allow users to insert their own profile"
+  ON public.profiles FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- Add UPDATE policy for profiles that allows users to update their own profile  
+CREATE POLICY "Allow users to update their own profile"
+  ON public.profiles FOR UPDATE
+  USING (auth.uid() = user_id);
+
+-- Add SELECT policy for profiles that allows users to view their own profile
+CREATE POLICY "Allow users to view their own profile"
   ON public.profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE user_id = auth.uid()
-      AND role = 'admin'
-    )
-  );
+  USING (auth.uid() = user_id OR 
+         EXISTS (
+           SELECT 1 FROM public.profiles
+           WHERE user_id = auth.uid()
+           AND role = 'admin'
+         ));
+
+-- For initial signup flow, allow users to insert their profile
+CREATE POLICY "Allow authenticated users to insert their profile during signup"
+  ON public.profiles FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
