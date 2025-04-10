@@ -1,23 +1,23 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Building, Check, CreditCard, Wrench } from 'lucide-react';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, profile } = useSupabaseAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
-    if (user) {
-      if (user.role === 'admin') {
+    if (user && profile) {
+      if (profile.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/tenant');
       }
     }
-  }, [user, navigate]);
+  }, [user, profile, navigate]);
 
   return (
     <div className="min-h-screen bg-white">
