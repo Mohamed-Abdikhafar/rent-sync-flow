@@ -1,180 +1,176 @@
-import React, { ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  CreditCard, 
-  Clock, 
-  Wrench, 
-  FileText,
-  LogOut,
-  DoorOpen,
-  MessageSquare,
-  Menu,
-  Bell,
-  User,
-  ChevronDown,
-} from 'lucide-react';
-import Logo from '../Logo';
-import { 
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+
+import React, { ReactNode, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from "../ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { ROUTES } from '@/lib/constants';
+  LayoutDashboard,
+  CreditCard,
+  Wrench,
+  DoorOpen,
+  FileText,
+  MessageSquare,
+  Settings,
+  LogOut,
+  Clock,
+  Menu,
+  X,
+} from "lucide-react";
+import { Separator } from "../ui/separator";
+import Logo from "../Logo";
+import { Link } from "react-router-dom";
+import { ROUTES } from "@/lib/constants";
+import { useMobile } from "@/hooks/use-mobile";
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+import { toast } from 'sonner';
 
 interface TenantLayoutProps {
   children: ReactNode;
-  title: string;
+  title?: string;
 }
 
-const TenantLayout: React.FC<TenantLayoutProps> = ({ children, title }) => {
-  const { logout, user } = useAuth();
+const TenantLayout: React.FC<TenantLayoutProps> = ({ 
+  children, 
+  title = "Dashboard"
+}) => {
+  const { isMobile, isMenuOpen, toggleMenu } = useMobile();
+  const { user, profile, logout, loading } = useSupabaseAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  
+  // Check if user is authenticated and is a tenant
+  useEffect(() => {
+    if (!loading && (!user || !profile || profile.role !== 'tenant')) {
+      toast.error('You must be logged in as a tenant to access this page');
+      navigate('/login');
+    }
+  }, [user, profile, loading, navigate]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rentalsync-primary"></div>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
+  // Sidebar navigation items
   const navItems = [
-    { name: 'Dashboard', icon: Home, path: ROUTES.TENANT.DASHBOARD },
-    { name: 'Make Payment', icon: CreditCard, path: ROUTES.TENANT.PAYMENTS },
-    { name: 'Payment History', icon: Clock, path: ROUTES.TENANT.PAYMENT_HISTORY },
-    { name: 'Maintenance', icon: Wrench, path: ROUTES.TENANT.MAINTENANCE },
-    { name: 'Documents', icon: FileText, path: ROUTES.TENANT.DOCUMENTS },
-    { name: 'Move Out', icon: DoorOpen, path: ROUTES.TENANT.MOVE_OUT },
-    { name: 'Messages', icon: MessageSquare, path: ROUTES.TENANT.MESSAGES },
+    { icon: LayoutDashboard, label: "Dashboard", href: ROUTES.TENANT.DASHBOARD },
+    { icon: CreditCard, label: "Make Payment", href: ROUTES.TENANT.PAYMENTS },
+    { icon: Clock, label: "Payment History", href: ROUTES.TENANT.PAYMENT_HISTORY },
+    { icon: Wrench, label: "Maintenance", href: ROUTES.TENANT.MAINTENANCE },
+    { icon: FileText, label: "Documents", href: ROUTES.TENANT.DOCUMENTS },
+    { icon: DoorOpen, label: "Move Out", href: ROUTES.TENANT.MOVE_OUT },
+    { icon: MessageSquare, label: "Messages", href: ROUTES.TENANT.MESSAGES },
   ];
+  
+  // Prevent rendering the layout if not authenticated
+  if (!user || !profile) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Top navigation bar */}
-      <header className="bg-white border-b border-gray-200 py-4 px-4 sm:px-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Sheet>
-            <SheetTrigger asChild className="block lg:hidden mr-4">
-              <Button variant="outline" size="icon">
-                <Menu size={20} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[240px] p-0 bg-sidebar">
-              <div className="p-4 flex justify-between items-center">
-                <Logo className="text-white" />
-              </div>
-              <div className="mt-4 space-y-1 px-2">
-                {navItems.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.path}
-                    className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate(item.path);
-                    }}
-                  >
-                    <item.icon size={20} />
-                    <span>{item.name}</span>
-                  </a>
-                ))}
-                <a
-                  className="nav-link text-white hover:bg-white/20"
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleLogout();
-                  }}
-                >
-                  <LogOut size={20} />
-                  <span>Logout</span>
-                </a>
-              </div>
-            </SheetContent>
-          </Sheet>
-          <Logo className="hidden lg:flex" />
-          <h1 className="text-xl font-semibold ml-4">{title}</h1>
+    <div className="min-h-screen flex bg-gray-50">
+      {/* Sidebar - Hidden on mobile unless menu is open */}
+      <div 
+        className={`
+          ${isMobile ? 'fixed inset-y-0 left-0 z-50 bg-white shadow-xl' : 'relative'}
+          ${isMobile && !isMenuOpen ? '-translate-x-full' : 'translate-x-0'}
+          transition-transform duration-300 ease-in-out
+          w-64 border-r border-gray-200 flex flex-col
+        `}
+      >
+        {/* Logo area */}
+        <div className="p-4 flex items-center justify-between">
+          <Logo />
+          {isMobile && (
+            <Button variant="ghost" size="icon" onClick={toggleMenu}>
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User size={16} />
-                </div>
-                <span className="hidden md:flex items-center">
-                  {user?.firstName} {user?.lastName}
-                  <ChevronDown size={16} className="ml-1" />
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
 
-      {/* Main content area with sidebar */}
-      <div className="flex flex-1">
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:flex flex-col w-64 bg-sidebar">
-          <div className="space-y-1 px-2 py-4">
-            {navItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.path}
-                className={`nav-link ${location.pathname === item.path ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(item.path);
-                }}
-              >
-                <item.icon size={20} />
-                <span>{item.name}</span>
-              </a>
-            ))}
-            <a
-              className="nav-link text-white hover:bg-white/20"
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                handleLogout();
-              }}
-            >
-              <LogOut size={20} />
-              <span>Logout</span>
-            </a>
-          </div>
-        </aside>
+        <Separator />
         
-        {/* Main content */}
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        {/* Navigation area */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="flex items-center py-2 px-3 text-sm font-medium rounded-md hover:bg-gray-100"
+            >
+              <item.icon className="mr-3 h-5 w-5 text-gray-500" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        
+        <Separator />
+        
+        {/* User profile */}
+        <div className="p-4">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-rentalsync-primary text-white flex items-center justify-center">
+              {profile.firstName[0]}{profile.lastName[0]}
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{profile.firstName} {profile.lastName}</p>
+              <p className="text-xs text-gray-600">Tenant</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full flex items-center"
+            onClick={logout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center px-4">
+          <div className="flex justify-between items-center w-full">
+            {/* Mobile menu button and page title */}
+            <div className="flex items-center space-x-3">
+              {isMobile && (
+                <Button variant="ghost" size="icon" onClick={toggleMenu}>
+                  <Menu className="h-5 w-5" />
+                </Button>
+              )}
+              <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+            </div>
+            
+            {/* Right side buttons */}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </header>
+        
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-y-auto">
           {children}
         </main>
       </div>
+      
+      {/* Overlay for mobile when menu is open */}
+      {isMobile && isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 z-40"
+          onClick={toggleMenu}
+        ></div>
+      )}
     </div>
   );
 };

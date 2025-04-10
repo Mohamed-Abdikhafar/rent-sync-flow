@@ -1,15 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import AuthLayout from '@/components/layouts/AuthLayout';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ROUTES, USER_ROLES } from '@/lib/constants';
 import { UserRole } from '@/lib/types';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -18,11 +18,22 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<UserRole>('tenant');
+  const [role, setRole] = useState<UserRole>('admin');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { register } = useAuth();
+  const { register, user, profile } = useSupabaseAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && profile) {
+      if (profile.role === 'admin') {
+        navigate(ROUTES.ADMIN.DASHBOARD);
+      } else {
+        navigate(ROUTES.TENANT.DASHBOARD);
+      }
+    }
+  }, [user, profile, navigate]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,17 +58,10 @@ const Register = () => {
     
     try {
       await register(email, password, role, firstName, lastName, phoneNumber);
-      toast.success('Registration successful!');
       
-      // Navigate based on user role
-      if (role === USER_ROLES.ADMIN) {
-        navigate(ROUTES.ADMIN.DASHBOARD);
-      } else {
-        navigate(ROUTES.TENANT.DASHBOARD);
-      }
+      // The redirect will happen in the auth context when profile is loaded
     } catch (error) {
       // Error is already handled in the AuthContext
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -65,7 +69,7 @@ const Register = () => {
   return (
     <AuthLayout
       title="Create an account"
-      subtitle="Sign up to get started with RentalSync"
+      subtitle="Sign up to manage your properties"
     >
       <form onSubmit={handleRegister} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -142,22 +146,9 @@ const Register = () => {
           />
         </div>
         
-        <div className="space-y-2">
-          <Label>I am a:</Label>
-          <RadioGroup
-            value={role}
-            onValueChange={(value) => setRole(value as UserRole)}
-            className="flex gap-4"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="tenant" id="tenant" />
-              <Label htmlFor="tenant" className="cursor-pointer">Tenant</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="admin" id="admin" />
-              <Label htmlFor="admin" className="cursor-pointer">Property Manager</Label>
-            </div>
-          </RadioGroup>
+        <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md">
+          <p className="font-medium text-blue-700">Note:</p>
+          <p>Only property managers can register directly. Tenants must be invited by their property manager.</p>
         </div>
         
         <Button type="submit" className="w-full" disabled={isSubmitting}>
