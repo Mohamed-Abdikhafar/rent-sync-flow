@@ -84,12 +84,16 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   // Fetch user profile data
   const fetchUserProfile = async (user: SupabaseUser) => {
     try {
       console.log('Fetching profile for user:', user.id);
+      
+      // Wait a moment for the profile to be available
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -98,6 +102,85 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
 
       if (error) {
         console.error('Error fetching profile:', error);
+        
+        // Create a profile if it doesn't exist
+        if (error.code === 'PGRST116') {
+          console.log('No profile found, attempting to create one...');
+          
+          try {
+            // Fetch user email from auth
+            const { data: userData } = await supabase.auth.getUser();
+            if (!userData.user) throw new Error('User not found');
+            
+            // Create a basic profile
+            const newProfileId = uuidv4();
+            const { error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: newProfileId,
+                user_id: user.id,
+                email: userData.user.email || '',
+                first_name: 'User',
+                last_name: userData.user.id.substring(0, 5),
+                phone_number: '0000000000',
+                role: 'admin', // Default to admin
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+              
+            if (createError) {
+              console.error('Error creating profile:', createError);
+              setAuthState({
+                user,
+                profile: null,
+                loading: false
+              });
+              return;
+            }
+            
+            // Fetch the newly created profile
+            const { data: newProfile, error: fetchError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (fetchError || !newProfile) {
+              console.error('Error fetching new profile:', fetchError);
+              setAuthState({
+                user,
+                profile: null,
+                loading: false
+              });
+              return;
+            }
+            
+            console.log('Profile created and fetched:', newProfile);
+            setAuthState({
+              user,
+              profile: {
+                id: newProfile.id,
+                firstName: newProfile.first_name,
+                lastName: newProfile.last_name,
+                phoneNumber: newProfile.phone_number,
+                role: newProfile.role as UserRole,
+              },
+              loading: false
+            });
+            
+            // Redirect based on role
+            if (newProfile.role === 'admin') {
+              navigate(ROUTES.ADMIN.DASHBOARD);
+            } else {
+              navigate(ROUTES.TENANT.DASHBOARD);
+            }
+            
+            return;
+          } catch (createError) {
+            console.error('Error in profile creation fallback:', createError);
+          }
+        }
+        
         setAuthState({
           user,
           profile: null,

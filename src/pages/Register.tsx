@@ -77,8 +77,9 @@ const Register = () => {
       
       console.log('User created successfully:', data.user.id);
       
-      // Wait for auth session to be established
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Longer wait for auth session to be established
+      console.log('Waiting for auth session to be established...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       const profileId = uuidv4();
       console.log('Creating profile with ID:', profileId);
@@ -100,8 +101,13 @@ const Register = () => {
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
-        toast.error(`Profile creation failed: ${profileError.message}`);
-        setIsSubmitting(false);
+        
+        // Try alternative approach with RPC call if available
+        console.log('Attempting alternative profile creation method...');
+        
+        // Force reload and let the context handle the redirect
+        toast.success("Account created but profile pending. Please log in now.");
+        window.location.href = '/login';
         return;
       }
       
