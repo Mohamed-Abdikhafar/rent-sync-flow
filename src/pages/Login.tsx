@@ -58,9 +58,23 @@ const Login = () => {
         activeTab === 'tenant' ? invitationCode : undefined
       );
       
-      // The redirect will happen in the auth context when profile is loaded
-    } catch (error) {
+      // Show a loading toast
+      toast.loading('Signing you in...', { id: 'login' });
+      
+      // Add a timeout to allow for profile creation
+      setTimeout(() => {
+        toast.dismiss('login');
+        if (activeTab === 'admin') {
+          navigate(ROUTES.ADMIN.DASHBOARD);
+        } else {
+          navigate(ROUTES.TENANT.DASHBOARD);
+        }
+      }, 3000);
+      
+    } catch (error: any) {
       // Error is already handled in the AuthContext
+      toast.dismiss('login');
+      toast.error(error.message || 'Login failed');
       setIsSubmitting(false);
     }
   };

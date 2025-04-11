@@ -26,7 +26,7 @@ import AdminMessages from "./pages/admin/Messages";
 import AdminAnalytics from "./pages/admin/Analytics";
 import { SupabaseAuthProvider } from "./contexts/SupabaseAuthContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import React, { useState } from "react";
+import React from "react";
 
 // Protected route wrapper
 const ProtectedRoute = ({ children, requiredRole }: { children: JSX.Element, requiredRole?: 'admin' | 'tenant' }) => {
@@ -34,10 +34,17 @@ const ProtectedRoute = ({ children, requiredRole }: { children: JSX.Element, req
   return children;
 };
 
+// Create a new QueryClient instance outside of the component
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 const App = () => {
-  // Create a new QueryClient instance within the component
-  const [queryClient] = useState(() => new QueryClient());
-  
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

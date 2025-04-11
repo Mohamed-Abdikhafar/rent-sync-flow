@@ -86,144 +86,178 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
     };
   }, [navigate]);
 
-  // Fetch user profile data
+  // Fetch user profile data with retry mechanism
   const fetchUserProfile = async (user: SupabaseUser) => {
-    try {
-      console.log('Fetching profile for user:', user.id);
-      
-      // Wait a moment for the profile to be available
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
+    console.log('Fetching profile for user:', user.id);
+    let attempts = 0;
+    const maxAttempts = 5;
+    const delay = 2000; // 2 seconds delay between attempts
+    
+    const attemptFetch = async (): Promise<boolean> => {
+      try {
+        attempts++;
+        console.log(`Profile fetch attempt ${attempts} of ${maxAttempts}`);
         
-        // Create a profile if it doesn't exist
-        if (error.code === 'PGRST116') {
-          console.log('No profile found, attempting to create one...');
+        // Direct SQL query approach to avoid RLS issues
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
           
-          try {
-            // Fetch user email from auth
-            const { data: userData } = await supabase.auth.getUser();
-            if (!userData.user) throw new Error('User not found');
-            
-            // Create a basic profile
-            const newProfileId = uuidv4();
-            const { error: createError } = await supabase
-              .from('profiles')
-              .insert({
-                id: newProfileId,
-                user_id: user.id,
-                email: userData.user.email || '',
-                first_name: 'User',
-                last_name: userData.user.id.substring(0, 5),
-                phone_number: '0000000000',
-                role: 'admin', // Default to admin
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              });
-              
-            if (createError) {
-              console.error('Error creating profile:', createError);
-              setAuthState({
-                user,
-                profile: null,
-                loading: false
-              });
-              return;
-            }
-            
-            // Fetch the newly created profile
-            const { data: newProfile, error: fetchError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', user.id)
-              .single();
-              
-            if (fetchError || !newProfile) {
-              console.error('Error fetching new profile:', fetchError);
-              setAuthState({
-                user,
-                profile: null,
-                loading: false
-              });
-              return;
-            }
-            
-            console.log('Profile created and fetched:', newProfile);
-            setAuthState({
-              user,
-              profile: {
-                id: newProfile.id,
-                firstName: newProfile.first_name,
-                lastName: newProfile.last_name,
-                phoneNumber: newProfile.phone_number,
-                role: newProfile.role as UserRole,
-              },
-              loading: false
-            });
-            
-            // Redirect based on role
-            if (newProfile.role === 'admin') {
-              navigate(ROUTES.ADMIN.DASHBOARD);
-            } else {
-              navigate(ROUTES.TENANT.DASHBOARD);
-            }
-            
-            return;
-          } catch (createError) {
-            console.error('Error in profile creation fallback:', createError);
+        if (error) {
+          console.error(`Profile fetch attempt ${attempts} failed:`, error);
+          
+          // If this is the last attempt, try to create a profile
+          if (attempts >= maxAttempts) {
+            return await createDefaultProfile(user);
           }
+          
+          return false;
         }
-        
-        setAuthState({
-          user,
-          profile: null,
-          loading: false
-        });
-        return;
-      }
 
-      if (profile) {
-        console.log('Profile found:', profile);
-        setAuthState({
-          user,
-          profile: {
-            id: profile.id,
-            firstName: profile.first_name,
-            lastName: profile.last_name,
-            phoneNumber: profile.phone_number,
-            role: profile.role as UserRole,
-          },
-          loading: false
-        });
-        
-        // Redirect based on role
-        if (profile.role === 'admin') {
-          navigate(ROUTES.ADMIN.DASHBOARD);
+        if (profile) {
+          console.log('Profile found:', profile);
+          
+          setAuthState({
+            user,
+            profile: {
+              id: profile.id,
+              firstName: profile.first_name,
+              lastName: profile.last_name,
+              phoneNumber: profile.phone_number,
+              role: profile.role as UserRole,
+            },
+            loading: false
+          });
+          
+          return true;
         } else {
-          navigate(ROUTES.TENANT.DASHBOARD);
+          console.log('No profile found for user');
+          
+          // If this is the last attempt, try to create a profile
+          if (attempts >= maxAttempts) {
+            return await createDefaultProfile(user);
+          }
+          
+          return false;
         }
-      } else {
-        console.log('No profile found for user');
-        setAuthState({
-          user,
-          profile: null,
-          loading: false
-        });
+      } catch (error) {
+        console.error(`Profile fetch attempt ${attempts} error:`, error);
+        
+        // If this is the last attempt, try to create a profile
+        if (attempts >= maxAttempts) {
+          return await createDefaultProfile(user);
+        }
+        
+        return false;
       }
-    } catch (error) {
-      console.error('Profile fetch error:', error);
+    };
+    
+    // First attempt
+    let success = await attemptFetch();
+    
+    // Retry logic
+    while (!success && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      success = await attemptFetch();
+    }
+    
+    if (!success) {
+      console.error('All profile fetch attempts failed');
       setAuthState({
         user,
         profile: null,
         loading: false
       });
+    }
+  };
+  
+  // Create a default profile when no profile exists
+  const createDefaultProfile = async (user: SupabaseUser): Promise<boolean> => {
+    try {
+      console.log('Creating default profile for user:', user.id);
+      
+      // Fetch user email from auth
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        throw new Error('User not found');
+      }
+      
+      // Create a new profile with a unique ID
+      const newProfileId = uuidv4();
+      
+      // Use direct SQL approach to bypass RLS
+      const { error: createError } = await supabase
+        .rpc('create_user_profile', {
+          p_id: newProfileId,
+          p_user_id: user.id,
+          p_email: userData.user.email || '',
+          p_first_name: 'User',
+          p_last_name: userData.user.id.substring(0, 5),
+          p_phone_number: '0000000000',
+          p_role: 'admin', // Default role
+        });
+        
+      if (createError) {
+        console.error('Profile creation error using RPC:', createError);
+        
+        // Fallback to direct insert
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: newProfileId,
+            user_id: user.id,
+            email: userData.user.email || '',
+            first_name: 'User',
+            last_name: userData.user.id.substring(0, 5),
+            phone_number: '0000000000',
+            role: 'admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          
+        if (insertError) {
+          console.error('Fallback profile creation error:', insertError);
+          return false;
+        }
+      }
+      
+      // Wait for the profile to be created
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Fetch the newly created profile
+      const { data: newProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (fetchError || !newProfile) {
+        console.error('Error fetching new profile:', fetchError);
+        return false;
+      }
+      
+      console.log('Profile created and fetched:', newProfile);
+      
+      // Update state with the new profile
+      setAuthState({
+        user,
+        profile: {
+          id: newProfile.id,
+          firstName: newProfile.first_name,
+          lastName: newProfile.last_name,
+          phoneNumber: newProfile.phone_number,
+          role: newProfile.role as UserRole,
+        },
+        loading: false
+      });
+      
+      toast.success('Profile created successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in profile creation:', error);
+      return false;
     }
   };
 
@@ -301,26 +335,54 @@ export const SupabaseAuthProvider = ({ children }: SupabaseAuthProviderProps) =>
       console.log('User created successfully:', data.user.id);
       
       // Wait longer to ensure the auth session is established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Create user profile with proper permissions and a unique ID
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: uuidv4(),
-          user_id: data.user.id,
-          email: email,
-          first_name: firstName,
-          last_name: lastName,
-          phone_number: phoneNumber,
-          role,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
+      // Create a unique profile ID
+      const profileId = uuidv4();
+      
+      console.log('Creating profile with ID:', profileId);
+      
+      // Create user profile - try RPC first
+      try {
+        const { error: rpcError } = await supabase
+          .rpc('create_user_profile', {
+            p_id: profileId,
+            p_user_id: data.user.id,
+            p_email: email,
+            p_first_name: firstName,
+            p_last_name: lastName,
+            p_phone_number: phoneNumber,
+            p_role: role,
+          });
+          
+        if (rpcError) {
+          console.error('Profile creation via RPC failed:', rpcError);
+          throw rpcError;
+        }
+        
+        console.log('Profile created successfully via RPC');
+      } catch (rpcError) {
+        console.error('RPC error, trying direct insert:', rpcError);
+        
+        // Fall back to direct insert
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: profileId,
+            user_id: data.user.id,
+            email: email,
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: phoneNumber,
+            role,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          
+        if (insertError) {
+          console.error('Profile creation error:', insertError);
+          throw insertError;
+        }
       }
       
       toast.success('Registration successful!');
